@@ -29,6 +29,6 @@ app.use('/api/credit', creditRouter);
 // port number to start backend server
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
+// ❌ remove app.listen
+// ✅ instead export app
+export default app;
