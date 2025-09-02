@@ -25,6 +25,7 @@
     "svix": "^1.75.1"
   },
   "devDependencies": {
+    "eslint-plugin-import": "^2.32.0",
     "nodemon": "^3.1.10"
   }
 }
