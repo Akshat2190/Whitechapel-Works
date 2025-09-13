@@ -1,12 +1,14 @@
 import Stripe from "stripe";
 import Transaction from "../models/Transaction.js";
-import User from "../models/User.js";
+import User from '../models/User.js';
+import { response } from "express";
 
-export const stripeWebhooks = async (request, response) => {
+export const stripeWebhooks = async () => {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
   const sig = request.headers["stripe-signature"];
 
   let event;
+
   try {
     event = stripe.webhooks.constructEvent(
       request.body,
@@ -19,33 +21,45 @@ export const stripeWebhooks = async (request, response) => {
 
   try {
     switch (event.type) {
-      case "checkout.session.completed": {
-        const session = event.data.object;
-        const { transactionId, appId } = session.metadata || {};
+      case "payment_intent.succeeded": {
+        const payment_intent = event.data.object;
+        const sessionList = await stripe.checkout.sessions.list({
+          payment_intent: payment_intent.id,
+        });
 
-        if (appId === "whitechapel_works" && transactionId) {
-          const tx = await Transaction.findOne({
+        const session = sessionList.data[0];
+        const { transactionId, appId } = session.metadata;
+
+        if (appId === "whitechapel_works") {
+          const transaction = await Transaction.findOne({
             _id: transactionId,
             isPaid: false,
           });
-          if (tx) {
-            await User.updateOne(
-              { _id: tx.userId },
-              { $inc: { credits: tx.credits } }
-            );
-            tx.isPaid = true;
-            await tx.save();
-          }
+
+          // Update credits in user account
+          await User.updateOne(
+            { _id: transaction.userId },
+            { $inc: { credits: transaction.credits } }
+          );
+
+          // Update credit Payment status
+          transaction.isPaid = true;
+          await transaction.save();
+        } else {
+          return res.json({
+            received: true,
+            message: "Ignored event: Invalid app",
+          });
         }
         break;
       }
       default:
-        // no-op
+        console.log(`Unhandled event type ${event.type}`);
         break;
     }
-    return response.json({ received: true });
+    response.json({ received: true });
   } catch (error) {
     console.error("Webhook processing error:", error);
-    return response.status(500).send("Internal Server Error");
+    response.status(500).send("Internal Server Error");
   }
 };
