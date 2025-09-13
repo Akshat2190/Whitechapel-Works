@@ -19,10 +19,18 @@ const allowedOrigins = [
   "http://localhost:3000",
 ].filter(Boolean);
 
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true; // server-to-server, curl, etc.
+  if (allowedOrigins.includes(origin)) return true;
+  // Allow Vercel preview/prod frontends
+  if (/^https?:\/\/([a-z0-9-]+\.)*vercel\.app$/i.test(origin)) return true;
+  return false;
+};
+
 const corsOptions = {
   origin: (origin, cb) => {
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    return cb(new Error("Not allowed by CORS"));
+    if (isAllowedOrigin(origin)) return cb(null, true);
+    return cb(new Error(`Not allowed by CORS: ${origin || "unknown"}`));
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -30,6 +38,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+app.options("*", cors(corsOptions)); // preflight
 
 // Stripe Webhooks (raw body)
 app.post(
