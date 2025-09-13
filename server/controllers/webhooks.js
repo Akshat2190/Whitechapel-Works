@@ -1,14 +1,12 @@
 import Stripe from "stripe";
 import Transaction from "../models/Transaction.js";
-import User from '../models/User.js';
-import { response } from "express";
+import User from "../models/User.js";
 
-export const stripeWebhooks = async () => {
+export const stripeWebhooks = async (request, response) => {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
   const sig = request.headers["stripe-signature"];
 
   let event;
-
   try {
     event = stripe.webhooks.constructEvent(
       request.body,
@@ -21,45 +19,33 @@ export const stripeWebhooks = async () => {
 
   try {
     switch (event.type) {
-      case "payment_intent.succeeded": {
-        const payment_intent = event.data.object;
-        const sessionList = await stripe.checkout.sessions.list({
-          payment_intent: payment_intent.id,
-        });
+      case "checkout.session.completed": {
+        const session = event.data.object;
+        const { transactionId, appId } = session.metadata || {};
 
-        const session = sessionList.data[0];
-        const { transactionId, appId } = session.metadata;
-
-        if (appId === "whitechapel_works") {
-          const transaction = await Transaction.findOne({
+        if (appId === "whitechapel_works" && transactionId) {
+          const tx = await Transaction.findOne({
             _id: transactionId,
             isPaid: false,
           });
-
-          // Update credits in user account
-          await User.updateOne(
-            { _id: transaction.userId },
-            { $inc: { credits: transaction.credits } }
-          );
-
-          // Update credit Payment status
-          transaction.isPaid = true;
-          await transaction.save();
-        } else {
-          return res.json({
-            received: true,
-            message: "Ignored event: Invalid app",
-          });
+          if (tx) {
+            await User.updateOne(
+              { _id: tx.userId },
+              { $inc: { credits: tx.credits } }
+            );
+            tx.isPaid = true;
+            await tx.save();
+          }
         }
         break;
       }
       default:
-        console.log(`Unhandled event type ${event.type}`);
+        // no-op
         break;
     }
-    response.json({ received: true });
+    return response.json({ received: true });
   } catch (error) {
     console.error("Webhook processing error:", error);
-    response.status(500).send("Internal Server Error");
+    return response.status(500).send("Internal Server Error");
   }
 };

@@ -34,13 +34,13 @@ const corsOptions = {
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "Stripe-Signature"],
 };
 
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions)); // preflight
 
-// Stripe Webhooks (raw body)
+// Stripe Webhooks (raw body BEFORE JSON parser)
 app.post(
   "/api/stripe",
   express.raw({ type: "application/json" }),
@@ -52,12 +52,11 @@ app.use(express.json());
 
 // Routes
 app.get("/", (req, res) => res.send("Server is Live!"));
+app.get("/api/health", (req, res) => res.json({ ok: true }));
 app.use("/api/user", userRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/message", messageRouter);
 app.use("/api/credit", creditRouter);
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server is running on port ${PORT}`);
-});
+// Export the Express app for Vercel
+export default app;
