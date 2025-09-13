@@ -46,6 +46,21 @@ app.use((req, res, next) => {
     next();
 });
 
+
+console.log('Allowed Origins:', allowedOrigins);
+
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  console.log('Request Origin:', req.headers.origin);
+  console.log('Request Body:', req.body);
+  next();
+});
+
+
+
+
+
+
 // Routes
 app.get('/', (req, res) => res.send('Server is Live!'));
 app.use('/api/user', userRouter);
