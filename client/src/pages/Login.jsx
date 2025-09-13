@@ -1,15 +1,37 @@
 import React, { useState } from 'react'
+import { useAppContext } from '../context/AppContext';
+import toast from 'react-hot-toast';
 
 const Login = () => {
 
-  const [state, setState] = useState("login");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  const handleSubmit = async (e) => {
-    e.preventDeafult();
-  }
+    const [state, setState] = useState("login");
+    const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const {axios, setToken} = useAppContext();
+  
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+  
+      const url = state === "login" ? '/api/user/login' : '/api/user/register';
+      const payload = state === "login" ? { email, password } : { name, email, password };
+  
+      try {
+          const { data } = await axios.post(url, payload, {
+            headers: { 'Content-Type': 'application/json' }
+          });
+          if (data.success) {
+              setToken(data.token);
+              localStorage.setItem("token", data.token);
+              window.location.reload();
+          } else {
+              toast.error(data.message || "Request failed");
+          }
+      } catch (error) {
+          toast.error(error.response?.data?.message || error.message);
+          console.error("Auth error:", error);
+      }
+    }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4 m-auto items-start p-8 py-12 w-80 sm:w-[352px] 

@@ -1,10 +1,15 @@
-import express from 'express';
-import { getPlans, purchasePlan } from '../controllers/creditController.js';
-import { protect } from '../middlewares/auth.js';
+import express from "express";
+import {
+  getPlans,
+  purchasePlan,
+  verifySession,
+} from "../controllers/creditController.js";
+import { protect } from "../middlewares/auth.js"; // fix path + named import
 
-const creditRouter = express.Router();
+const router = express.Router();
 
-creditRouter.get('/plan', getPlans)
-creditRouter.post('/purchase', protect, purchasePlan)
+router.get("/plan", getPlans);
+router.post("/purchase", protect, purchasePlan); // use protect
+router.post("/verify-session", protect, verifySession); // use protect
 
-export default creditRouter;
+export default router;

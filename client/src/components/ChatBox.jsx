@@ -2,22 +2,83 @@ import React, { useEffect, useRef, useState } from "react";
 import { useAppContext } from "../context/AppContext";
 import { assets } from "../assets/assets";
 import Message from "./Message";
+import toast from "react-hot-toast";
 
 const ChatBox = () => {
-
-  const containerRef = useRef(null)
-  const { selectedChat, theme } = useAppContext();
+  const containerRef = useRef(null);
+  const {
+    selectedChat,
+    theme,
+    user,
+    axios,
+    token,
+    setUser,
+    navigate,
+    setToken,
+  } = useAppContext();
 
   const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(false);
 
-  const [prompt, setPrompt] = useState('')
-  const [mode, setMode] = useState('text')
-  const [isPublished, setIsPublished] = useState(false)
+  const [prompt, setPrompt] = useState("");
+  const [mode, setMode] = useState("text");
+  const [isPublished, setIsPublished] = useState(false);
 
   const onSubmit = async (e) => {
-      e.preventDeafult();
-  }
+    try {
+      e.preventDefault();
+      if (!user) return toast("Login to send message");
+      if (!token) {
+        toast.error("Session expired. Please log in again.");
+        localStorage.removeItem("token");
+        setToken?.(null);
+        navigate?.("/login");
+        return;
+      }
+
+      setLoading(true);
+      const promptCopy = prompt;
+      setPrompt("");
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "user",
+          content: promptCopy,
+          timestamp: Date.now(),
+          isImage: mode === "image",
+        },
+      ]);
+
+      const { data } = await axios.post(
+        `/api/message/${mode}`,
+        { chatId: selectedChat._id, prompt: promptCopy, isPublished },
+        { headers: { Authorization: `Bearer ${token}` } } // <-- lowercase 'headers'
+      );
+
+      if (data.success) {
+        setMessages((prev) => [...prev, data.reply]);
+        // decrease user credits
+        setUser((prev) => ({
+          ...prev,
+          credits: Math.max(0, prev.credits - (mode === "image" ? 2 : 1)),
+        }));
+      } else {
+        toast.error(data.message);
+        setPrompt(promptCopy);
+      }
+    } catch (error) {
+      const status = error.response?.status;
+      toast.error(error.response?.data?.message || error.message);
+      if (status === 401) {
+        localStorage.removeItem("token");
+        setToken?.(null);
+        navigate?.("/login");
+      }
+    } finally {
+      setPrompt("");
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (selectedChat) {
@@ -25,18 +86,17 @@ const ChatBox = () => {
     }
   }, [selectedChat]);
 
-  useEffect(()=>{
-    if(containerRef.current){
+  useEffect(() => {
+    if (containerRef.current) {
       containerRef.current.scrollTo({
         top: containerRef.current.scrollHeight,
         behavior: "smooth",
-      })
+      });
     }
-  },[messages])
+  }, [messages]);
 
   return (
     <div className="flex-1 flex flex-col justify-between m-5 md:m-10 xl:mx-30 max-md:mt-14 2xl:pr-40">
-
       {/* {Chat messages}       */}
       <div ref={containerRef} className="flex-1 mb-5 overflow-y-scroll">
         {messages.length === 0 && (
@@ -57,34 +117,59 @@ const ChatBox = () => {
         ))}
 
         {/* three dot loading */}
-        {
-          loading && <div className="loader flex items-center gap-1.5">
+        {loading && (
+          <div className="loader flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full bg-gray-500 dark:bg-white animate-bounce"></div>
             <div className="w-1.5 h-1.5 rounded-full bg-gray-500 dark:bg-white animate-bounce"></div>
             <div className="w-1.5 h-1.5 rounded-full bg-gray-500 dark:bg-white animate-bounce"></div>
           </div>
-        }
-
+        )}
       </div>
 
-      {mode === 'image' && (
+      {mode === "image" && (
         <label className="inline-flex items-center gap-2 mb-3 text-sm mx-auto">
           <p className="text-xs">Publish Generated Image To Community</p>
-          <input type="checkbox" className="cursor-pointer" checked={isPublished} onChange={(e)=>setIsPublished(e.target.checked)} />
+          <input
+            type="checkbox"
+            className="cursor-pointer"
+            checked={isPublished}
+            onChange={(e) => setIsPublished(e.target.checked)}
+          />
         </label>
       )}
 
       {/* Prompt Input Box */}
-      <form onSubmit={onSubmit} className="flex bg-primary/20 dark:bg-[#583C79]/30 border border-primary dark:border-[#80609F]/30 rounded-full
-         w-full max-w-2xl p-3 pl-4 mx-auto gap-4 items-center">
-        <select onChange={(e)=>setMode(e.target.value)} value={mode} className="text-sm pl-3 pr-2 outline-none">
-          <option className="bg-purple-900" value="text">Text</option>
-          <option className="bg-purple-900" value="image">Image</option>
+      <form
+        onSubmit={onSubmit}
+        className="flex bg-primary/20 dark:bg-[#583C79]/30 border border-primary dark:border-[#80609F]/30 rounded-full
+         w-full max-w-2xl p-3 pl-4 mx-auto gap-4 items-center"
+      >
+        <select
+          onChange={(e) => setMode(e.target.value)}
+          value={mode}
+          className="text-sm pl-3 pr-2 outline-none"
+        >
+          <option className="bg-purple-900" value="text">
+            Text
+          </option>
+          <option className="bg-purple-900" value="image">
+            Image
+          </option>
         </select>
-        <input onChange={(e)=>setPrompt(e.target.value)} value={prompt} type="text" placeholder="Type your prompt here..." 
-        className="flex-1 w-full text-sm outline-none" required/>
+        <input
+          onChange={(e) => setPrompt(e.target.value)}
+          value={prompt}
+          type="text"
+          placeholder="Type your prompt here..."
+          className="flex-1 w-full text-sm outline-none"
+          required
+        />
         <button disabled={loading}>
-          <img src={loading ? assets.stop_icon : assets.send_icon} className="w-8 cursor-pointer" alt="" />
+          <img
+            src={loading ? assets.stop_icon : assets.send_icon}
+            className="w-8 cursor-pointer"
+            alt=""
+          />
         </button>
       </form>
     </div>
