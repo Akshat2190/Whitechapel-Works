@@ -17,22 +17,23 @@ await connectDB();
 app.post('/api/stripe', express.raw({ type: 'application/json' }), stripeWebhooks);
 
 // CORS Configuration
-const allowedOrigins = [
-    'http://localhost:5173', // local frontend
-    'https://whitechapel-works.vercel.app' // production frontend
-];
+const allowedOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',')
+    : ['http://localhost:5173', 'https://whitechapel-works.vercel.app'];
 
 app.use(cors({
     origin: function(origin, callback) {
-        if (!origin) return callback(null, true); // allow non-browser requests
+        if (!origin) return callback(null, true);
         if (allowedOrigins.includes(origin)) {
             return callback(null, true);
         }
-        return callback(null, false); // block other origins
+        console.log('Blocked origin:', origin);
+        return callback(null, false);
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true
 }));
+
 
 // Middleware to parse JSON bodies
 app.use(express.json());
