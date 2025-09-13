@@ -10,25 +10,56 @@ import { stripeWebhooks } from './controllers/webhooks.js';
 
 const app = express();
 
+// Connect to database
 await connectDB();
 
-// Stripe Webhooks
-app.post('/api/stripe', express.raw({type: 'application/json'}), stripeWebhooks);
+// Stripe Webhooks - needs raw body parsing before JSON middleware
+app.post('/api/stripe', express.raw({ type: 'application/json' }), stripeWebhooks);
 
-// Middleware
-app.use(cors());
+// CORS Configuration
+const allowedOrigins = [
+    'http://localhost:5173', // local frontend
+    'https://whitechapel-works.vercel.app' // production frontend
+];
+
+app.use(cors({
+    origin: function(origin, callback) {
+        if (!origin) return callback(null, true); // allow non-browser requests
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(null, false); // block other origins
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    credentials: true
+}));
+
+// Middleware to parse JSON bodies
 app.use(express.json());
 
+// Optional: Logger to debug requests and origins
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    console.log('Request Origin:', req.headers.origin);
+    console.log('Request Body:', req.body);
+    next();
+});
+
 // Routes
-app.get('/', (req, res)=> res.send('Server is Live!'));
+app.get('/', (req, res) => res.send('Server is Live!'));
 app.use('/api/user', userRouter);
-app.use('/api/chat', chatRouter); // Note: This should be chatRouter in a real scenario
+app.use('/api/chat', chatRouter);
 app.use('/api/message', messageRouter);
 app.use('/api/credit', creditRouter);
 
-// port number to start backend server
-const PORT = process.env.PORT || 3000;
+// Error handling middleware - must be after routes
+app.use((err, req, res, next) => {
+    console.error('Error handler:', err);
+    res.status(500).json({ message: 'Internal Server Error', error: err.message });
+});
 
+// Start the server
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server is running on port ${PORT}`);
+    console.log(`🚀 Server is running on port ${PORT}`);
 });
