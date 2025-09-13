@@ -14,7 +14,7 @@ await connectDB();
 
 // CORS
 const allowedOrigins = [
-  process.env.FRONTEND_URL, // e.g. https://whitechapel-works.vercel.app
+  process.env.FRONTEND_URL,
   "http://localhost:5173",
   "http://localhost:3000",
 ].filter(Boolean);
@@ -30,7 +30,6 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
 
 // Stripe Webhooks (raw body)
 app.post(
