@@ -41,22 +41,13 @@ app.use(
   })
 );
 
-// Explicitly handle preflight requests for all routes
-app.options(
-  "*",
-  cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(null, false);
-    },
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-  })
-);
+// Short-circuit all OPTIONS requests after CORS has set headers
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  next();
+});
 
 // Middleware to parse JSON bodies
 app.use(express.json());
