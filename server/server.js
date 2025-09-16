@@ -25,7 +25,9 @@ const allowedOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(",")
   : ["http://localhost:5173", "https://whitechapel-works.vercel.app"];
 
+// Enable CORS for API routes; the cors package will handle OPTIONS preflights
 app.use(
+  "/api",
   cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
@@ -38,16 +40,10 @@ app.use(
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
+    optionsSuccessStatus: 204,
+    preflightContinue: false,
   })
 );
-
-// Short-circuit all OPTIONS requests after CORS has set headers
-app.use((req, res, next) => {
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
-  next();
-});
 
 // Middleware to parse JSON bodies
 app.use(express.json());
