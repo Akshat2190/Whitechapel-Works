@@ -23,17 +23,30 @@ app.post(
 // CORS Configuration
 const allowedOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
   : ["http://localhost:5173", "https://whitechapel-works.vercel.app"];
+
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true; // non-browser requests
+  if (allowedOrigins.includes(origin)) return true;
+  // Allow any Vercel preview URL for the client project
+  try {
+    const url = new URL(origin);
+    const host = url.hostname; // e.g. whitechapel-works-git-branch-user.vercel.app
+    if (host.endsWith(".vercel.app") && host.startsWith("whitechapel-works")) {
+      return true;
+    }
+  } catch (_) {}
+  return false;
+};
 
 // Enable CORS for API routes; the cors package will handle OPTIONS preflights
 app.use(
   "/api",
   cors({
     origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
+      if (isAllowedOrigin(origin)) return callback(null, true);
       console.log("Blocked origin:", origin);
       return callback(null, false);
     },
