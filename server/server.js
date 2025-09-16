@@ -41,9 +41,8 @@ const isAllowedOrigin = (origin) => {
   return false;
 };
 
-// Enable CORS for API routes; the cors package will handle OPTIONS preflights
+// Apply CORS globally so all routes and preflights receive headers
 app.use(
-  "/api",
   cors({
     origin: function (origin, callback) {
       if (isAllowedOrigin(origin)) return callback(null, true);
