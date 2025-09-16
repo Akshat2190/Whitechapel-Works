@@ -13,13 +13,6 @@ const app = express();
 // Connect to database
 await connectDB();
 
-// Stripe Webhooks - needs raw body parsing before JSON middleware
-app.post(
-  "/api/stripe",
-  express.raw({ type: "application/json" }),
-  stripeWebhooks
-);
-
 // CORS Configuration
 const allowedOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(",")
@@ -57,8 +50,32 @@ app.use(
   })
 );
 
+// Explicit preflight responder to ensure headers on serverless
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") {
+    const origin = req.headers.origin;
+    if (isAllowedOrigin(origin)) {
+      res.header("Access-Control-Allow-Origin", origin || "*");
+      res.header("Vary", "Origin");
+      res.header("Access-Control-Allow-Credentials", "true");
+      res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+      res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+      return res.sendStatus(204);
+    }
+    return res.sendStatus(403);
+  }
+  next();
+});
+
 // Middleware to parse JSON bodies
 app.use(express.json());
+
+// Stripe Webhooks - needs raw body parsing before JSON middleware
+app.post(
+  "/api/stripe",
+  express.raw({ type: "application/json" }),
+  stripeWebhooks
+);
 
 // Optional: Logger to debug requests and origins
 app.use((req, res, next) => {
