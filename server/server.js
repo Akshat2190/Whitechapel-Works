@@ -13,40 +13,11 @@ const app = express();
 // Connect to database
 await connectDB();
 
-// CORS Configuration (temporarily allow all origins to debug)
-app.use(
-  cors({
-    origin: true, // reflect request origin
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-    optionsSuccessStatus: 204,
-    preflightContinue: false,
-  })
-);
+// Stripe Webhooks
+app.post('/api/stripe', express.raw({type: 'application/json'}), stripeWebhooks);
 
-// Explicit preflight responder to ensure headers on serverless
-app.use((req, res, next) => {
-  if (req.method === "OPTIONS") {
-    const origin = req.headers.origin;
-    res.header("Access-Control-Allow-Origin", origin || "*");
-    res.header("Vary", "Origin");
-    res.header("Access-Control-Allow-Credentials", "true");
-    res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    return res.sendStatus(204);
-  }
-  next();
-});
-
-// Stripe Webhooks - must be before JSON body parsing
-app.post(
-  "/api/stripe",
-  express.raw({ type: "application/json" }),
-  stripeWebhooks
-);
-
-// Middleware to parse JSON bodies (after Stripe raw parser)
+// Middleware
+app.use(cors());
 app.use(express.json());
 
 // Optional: Logger to debug requests and origins
@@ -64,13 +35,9 @@ app.use("/api/chat", chatRouter);
 app.use("/api/message", messageRouter);
 app.use("/api/credit", creditRouter);
 
-// Error handling middleware - must be after routes
-app.use((err, req, res, next) => {
-  console.error("Error handler:", err);
-  res
-    .status(500)
-    .json({ message: "Internal Server Error", error: err.message });
-});
+// port number to start backend server
+const PORT = process.env.PORT || 3000;
 
-// Export a request handler for serverless platforms like Vercel.
-export default (req, res) => app(req, res);
+app.listen(PORT, () => {
+  console.log(`🚀 Server is running on port ${PORT}`);
+});
