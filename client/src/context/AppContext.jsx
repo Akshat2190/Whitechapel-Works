@@ -4,7 +4,10 @@ import { dummyUserData, dummyChats } from "../assets/assets";
 import axios from "axios";
 import toast from "react-hot-toast";
 
-axios.defaults.baseURL = import.meta.env.VITE_SERVER_URL || "";
+// Use proxy in dev; env URL only for prod
+axios.defaults.baseURL = import.meta.env.DEV
+  ? ""
+  : import.meta.env.VITE_SERVER_URL || "";
 
 const AppContext = createContext();
 
@@ -30,7 +33,14 @@ export const AppContextProvider = ({ children }) => {
         toast.error(data.message);
       }
     } catch (error) {
-      toast.error(error.message);
+      const status = error.response?.status;
+      if (status === 401) {
+        // clear bad/stale token so UI shows login
+        localStorage.removeItem("token");
+        setToken(null);
+      } else {
+        toast.error(error.message);
+      }
     } finally {
       setLoadingUser(false);
     }
@@ -84,6 +94,7 @@ export const AppContextProvider = ({ children }) => {
       setChats([]);
       setSelectedChat(null);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   useEffect(() => {
@@ -92,6 +103,7 @@ export const AppContextProvider = ({ children }) => {
       setUser(null);
       setLoadingUser(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const value = {
