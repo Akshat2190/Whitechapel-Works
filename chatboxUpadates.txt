@@ -1,0 +1,3 @@
+dark mode theme to black and grey
+add nanobanana api with selection options
+to add img files and more add button

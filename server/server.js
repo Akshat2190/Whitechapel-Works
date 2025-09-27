@@ -20,7 +20,9 @@ app.post(
   stripeWebhooks
 );
 
-// CORS (relaxed for dev)
+// CORS is now handled by vercel.json at the edge.
+// This middleware is commented out to avoid configuration conflicts.
+/*
 app.use(
   cors({
     origin: true, // reflect request origin
@@ -30,6 +32,7 @@ app.use(
     optionsSuccessStatus: 204,
   })
 );
+*/
 
 // JSON body for all non-webhook routes
 app.use(express.json());
