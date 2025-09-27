@@ -10,18 +10,14 @@ import { stripeWebhooks } from "./controllers/webhooks.js";
 
 const app = express();
 
-// --- START: UPDATED CORS CONFIGURATION ---
-// Whitelist the specific frontend origin.
+// --- CORRECT CORS CONFIGURATION ---
+// This explicitly allows your frontend to connect.
 const corsOptions = {
   origin: "https://whitechapel-works.vercel.app",
-  credentials: true, // Allow cookies to be sent
+  credentials: true,
 };
-
-// Use the cors middleware with the specific options
 app.use(cors(corsOptions));
-// This will now correctly handle OPTIONS preflight requests
-// before they reach your other routes.
-// --- END: UPDATED CORS CONFIGURATION ---
+// --- END ---
 
 // Connect to database
 await connectDB();
@@ -36,11 +32,9 @@ app.post(
 // JSON body for all non-webhook routes
 app.use(express.json());
 
-// Optional: Logger to debug requests and origins
+// Logger to debug requests
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  console.log("Request Origin:", req.headers.origin);
-  console.log("Request Body:", req.body);
   next();
 });
 
